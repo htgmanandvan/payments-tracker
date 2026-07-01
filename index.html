@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HTG Payments">
+<title>HTG Payments</title>
+<style>
+  :root {
+    --blue: #185FA5; --blue-light: #E6F1FB; --blue-dark: #0C447C;
+    --green: #1D9E75; --green-light: #E1F5EE;
+    --amber: #BA7517; --amber-light: #FEF3CD;
+    --red: #A32D2D; --red-light: #FCEBEB;
+    --business: #185FA5; --business-light: #E6F1FB;
+    --personal: #6B3FA0; --personal-light: #F0E8FF;
+    --text: #1a1a1a; --text-muted: #6b6b68; --text-faint: #9b9b97;
+    --bg: #ffffff; --bg-secondary: #f7f6f3;
+    --border: rgba(0,0,0,0.1); --border-strong: rgba(0,0,0,0.18);
+    --radius: 12px; --radius-sm: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text: #f0ede8; --text-muted: #a8a8a3; --text-faint: #6b6b68;
+      --bg: #1a1a18; --bg-secondary: #252522;
+      --border: rgba(255,255,255,0.1); --border-strong: rgba(255,255,255,0.18);
+      --business-light: #0c2a47; --personal-light: #1e0e35;
+      --amber-light: #2e1e06; --red-light: #2e0a0a;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .app { max-width: 480px; margin: 0 auto; padding: 0 0 80px; }
+
+  .header { padding: 16px 16px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 0.5px solid var(--border); }
+  .header-left h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+  .header-left p { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .sync-btn { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-muted); background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: 20px; padding: 6px 12px; cursor: pointer; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .syncing .sync-icon { display: inline-block; animation: spin 1s linear infinite; }
+
+  .summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 14px 16px; }
+  .summary-card { background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px; }
+  .summary-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); margin-bottom: 4px; }
+  .summary-amount { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  .summary-card.business .summary-label { color: var(--business); }
+  .summary-card.personal .summary-label { color: var(--personal); }
+
+  .legend { display: flex; gap: 14px; padding: 0 16px 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  .filter-row { display: flex; gap: 6px; padding: 0 16px 12px; overflow-x: auto; }
+  .filter-btn { padding: 6px 14px; font-size: 13px; font-weight: 500; border: 0.5px solid var(--border-strong); border-radius: 20px; background: none; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+  .filter-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  .nav-row { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 10px; }
+  .nav-btn { width: 36px; height: 36px; border: 0.5px solid var(--border); border-radius: 50%; background: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 18px; }
+  .nav-btn:active { background: var(--bg-secondary); }
+  .nav-label { font-size: 16px; font-weight: 600; }
+
+  .list-container { padding: 0 16px; }
+  .payment-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; cursor: pointer; }
+  .payment-card.business { border-left: 3px solid var(--business); }
+  .payment-card.personal { border-left: 3px solid var(--personal); }
+  .payment-card.due-soon { background: var(--amber-light); }
+  .payment-inner { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .payment-left { flex: 1; min-width: 0; }
+  .payment-name { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .payment-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+  .payment-date { font-size: 12px; color: var(--text-muted); }
+  .tag { font-size: 11px; padding: 2px 7px; border-radius: 20px; font-weight: 500; }
+  .tag-business { background: var(--business-light); color: var(--business); }
+  .tag-personal { background: var(--personal-light); color: var(--personal); }
+  .tag-soon { background: var(--amber-light); color: var(--amber); }
+  .payment-amount { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; flex-shrink: 0; }
+
+  .payment-detail { display: none; border-top: 0.5px solid var(--border); padding: 12px 14px; background: var(--bg-secondary); }
+  .payment-detail.open { display: block; }
+  .detail-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+  .detail-label { color: var(--text-muted); }
+  .detail-val { color: var(--text); font-weight: 500; }
+  .action-row { display: flex; gap: 8px; margin-top: 10px; }
+  .action-btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; font-size: 13px; font-weight: 500; border: 0.5px solid var(--border-strong); border-radius: 20px; background: var(--bg); color: var(--text); cursor: pointer; }
+
+  .empty { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .empty h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+  .empty p { font-size: 14px; line-height: 1.5; }
+  .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; color: var(--text-muted); gap: 12px; font-size: 14px; }
+  .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; align-items: flex-end; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--bg); border-radius: var(--radius) var(--radius) 0 0; padding: 20px 16px 32px; width: 100%; border-top: 0.5px solid var(--border); max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+  .form-group input, .form-group select { width: 100%; font-size: 15px; padding: 10px 12px; border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .btn-primary { flex: 1; padding: 12px; background: var(--blue); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; }
+  .btn-secondary { padding: 12px 18px; background: none; border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); font-size: 15px; cursor: pointer; color: var(--text-muted); }
+
+  .fab { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; background: var(--blue); border-radius: 50%; border: none; color: #fff; font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(24,95,165,0.35); z-index: 40; }
+  .fab:active { opacity: 0.85; }
+
+  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 100; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  .sheet-banner { margin: 0 16px 12px; padding: 10px 14px; background: var(--amber-light); border: 0.5px solid var(--amber); border-radius: var(--radius-sm); font-size: 13px; color: var(--amber); line-height: 1.4; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-left">
+      <h1>HTG Payments</h1>
+      <p id="last-sync">Loading...</p>
+    </div>
+    <button class="sync-btn" onclick="loadPayments()" id="sync-btn">
+      <span class="sync-icon" id="sync-icon">↻</span> Sync
+    </button>
+  </div>
+
+  <div class="summary">
+    <div class="summary-card">
+      <div class="summary-label">Total / mo</div>
+      <div class="summary-amount" id="sum-total">—</div>
+    </div>
+    <div class="summary-card business">
+      <div class="summary-label">Business</div>
+      <div class="summary-amount" id="sum-business">—</div>
+    </div>
+    <div class="summary-card personal">
+      <div class="summary-label">Personal</div>
+      <div class="summary-amount" id="sum-personal">—</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--business)"></div>Business</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--personal)"></div>Personal</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Due within 7 days</div>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all')" id="f-all">All</button>
+    <button class="filter-btn" onclick="setFilter('business')" id="f-business">Business</button>
+    <button class="filter-btn" onclick="setFilter('personal')" id="f-personal">Personal</button>
+    <button class="filter-btn" onclick="setFilter('soon')" id="f-soon">Due soon</button>
+  </div>
+
+  <div class="nav-row">
+    <button class="nav-btn" onclick="navMonth(-1)">‹</button>
+    <span class="nav-label" id="nav-label"></span>
+    <button class="nav-btn" onclick="navMonth(1)">›</button>
+  </div>
+
+  <div id="sheet-banner" style="display:none" class="sheet-banner">
+    ⚠️ Running on local data. Connect a Google Sheet to sync across devices — see setup instructions.
+  </div>
+
+  <div class="list-container" id="list-container">
+    <div class="loading"><div class="spinner"></div>Loading payments...</div>
+  </div>
+</div>
+
+<button class="fab" onclick="openAdd()" title="Add payment">+</button>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h2 id="modal-title">Add payment</h2>
+    <div class="form-group">
+      <label>Payment name</label>
+      <input type="text" id="f-name" placeholder="e.g. Van insurance">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Amount (£)</label>
+        <input type="number" id="f-amount" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="f-type">
+          <option value="business">Business</option>
+          <option value="personal">Personal</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Due date</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="form-group">
+        <label>Frequency</label>
+        <select id="f-freq">
+          <option value="monthly">Monthly</option>
+          <option value="annual">Annual</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="weekly">Weekly</option>
+          <option value="one-off">One-off</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="f-category">
+        <option value="Insurance">Insurance</option>
+        <option value="Vehicle">Vehicle</option>
+        <option value="Subscriptions">Subscriptions</option>
+        <option value="Utilities">Utilities</option>
+        <option value="Rent / Mortgage">Rent / Mortgage</option>
+        <option value="Tax / HMRC">Tax / HMRC</option>
+        <option value="Equipment">Equipment</option>
+        <option value="Fuel">Fuel</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="btn-delete" style="display:none;color:var(--red)" onclick="deletePayment()">Delete</button>
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="savePayment()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+// To connect Google Sheet: paste your published CSV URL here
+// File → Share → Publish to web → Sheet1 → CSV → Copy link
+const SHEET_CSV_URL = '';
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+let allPayments = [];
+let filter = 'all';
+let viewMonth = new Date().getMonth();
+let viewYear = new Date().getFullYear();
+let editId = null;
+let usingSheet = false;
+
+function loadLocal() { return JSON.parse(localStorage.getItem('htg_payments') || '[]'); }
+function saveLocal(d) { localStorage.setItem('htg_payments', JSON.stringify(d)); }
+
+function seedIfEmpty() {
+  if (loadLocal().length) return;
+  const y = new Date().getFullYear();
+  const m = String(new Date().getMonth()+1).padStart(2,'0');
+  saveLocal([
+    { id:1, name:'Van insurance', amount:95, type:'business', date:`${y}-${m}-01`, freq:'monthly', category:'Insurance' },
+    { id:2, name:'Checkatrade subscription', amount:60, type:'business', date:`${y}-${m}-05`, freq:'monthly', category:'Subscriptions' },
+    { id:3, name:'Vehicle finance', amount:350, type:'business', date:`${y}-${m}-15`, freq:'monthly', category:'Vehicle' },
+    { id:4, name:'Mortgage', amount:1100, type:'personal', date:`${y}-${m}-01`, freq:'monthly', category:'Rent / Mortgage' },
+    { id:5, name:'Council tax', amount:180, type:'personal', date:`${y}-${m}-08`, freq:'monthly', category:'Utilities' },
+    { id:6, name:'Broadband', amount:35, type:'personal', date:`${y}-${m}-18`, freq:'monthly', category:'Subscriptions' },
+  ]);
+}
+
+async function loadPayments() {
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('syncing');
+  document.getElementById('last-sync').textContent = 'Syncing...';
+
+  if (!SHEET_CSV_URL) {
+    seedIfEmpty();
+    allPayments = loadLocal();
+    usingSheet = false;
+    document.getElementById('sheet-banner').style.display = 'block';
+    document.getElementById('last-sync').textContent = 'Local data — add Sheet URL to sync';
+    btn.classList.remove('syncing');
+    render(); return;
+  }
+
+  try {
+    const resp = await fetch(SHEET_CSV_URL);
+    const text = await resp.text();
+    const rows = text.trim().split('\n').slice(1);
+    allPayments = rows.map((row,i) => {
+      const cols = row.match(/(".*?"|[^,]+)(?=,|$)/g) || row.split(',');
+      const clean = cols.map(s => s.replace(/^"|"$/g,'').trim());
+      return { id:i+1, name:clean[0], amount:parseFloat(clean[1])||0, type:clean[2]||'business', date:clean[3], freq:clean[4]||'monthly', category:clean[5]||'Other' };
+    }).filter(p => p.name);
+    saveLocal(allPayments);
+    usingSheet = true;
+    document.getElementById('sheet-banner').style.display = 'none';
+    document.getElementById('last-sync').textContent = `Synced ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
+    showToast(`${allPayments.length} payments loaded`);
+  } catch(e) {
+    allPayments = loadLocal();
+    document.getElementById('last-sync').textContent = 'Sheet error — showing local data';
+  } finally {
+    btn.classList.remove('syncing');
+    render();
+  }
+}
+
+function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function fmtCurrency(n) { return '£'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function fmtDate(s) { if(!s)return''; const[y,m,d]=s.split('-'); return `${parseInt(d)} ${MONTHS[parseInt(m)-1].slice(0,3)} ${y}`; }
+function getDaysUntil(s) { if(!s)return null; const t=new Date();t.setHours(0,0,0,0); const d=new Date(s);d.setHours(0,0,0,0); return Math.round((d-t)/86400000); }
+function getMonthlyAmount(p) { switch(p.freq){case'weekly':return p.amount*52/12;case'monthly':return p.amount;case'quarterly':return p.amount/3;case'annual':return p.amount/12;default:return 0;} }
+
+function setFilter(f) {
+  filter=f;
+  ['all','business','personal','soon'].forEach(x=>document.getElementById(`f-${x}`).classList.toggle('active',x===f));
+  render();
+}
+
+function navMonth(dir) {
+  viewMonth+=dir;
+  if(viewMonth>11){viewMonth=0;viewYear++;}
+  if(viewMonth<0){viewMonth=11;viewYear--;}
+  render();
+}
+
+function getPaymentsForMonth(month,year) {
+  return allPayments.filter(p=>{
+    if(!p.date)return false;
+    const d=new Date(p.date);
+    if(p.freq==='one-off') return d.getMonth()===month&&d.getFullYear()===year;
+    if(p.freq==='annual') return d.getMonth()===month;
+    if(p.freq==='quarterly') return (month-d.getMonth())%3===0&&month>=d.getMonth();
+    return true;
+  }).map(p=>{
+    const orig=new Date(p.date);
+    const displayDate=`${year}-${String(month+1).padStart(2,'0')}-${String(orig.getDate()).padStart(2,'0')}`;
+    return{...p,displayDate};
+  }).sort((a,b)=>a.displayDate.localeCompare(b.displayDate));
+}
+
+function render() {
+  document.getElementById('nav-label').textContent=`${MONTHS[viewMonth]} ${viewYear}`;
+  const mp=getPaymentsForMonth(viewMonth,viewYear);
+  const biz=mp.filter(p=>p.type==='business').reduce((s,p)=>s+p.amount,0);
+  const per=mp.filter(p=>p.type==='personal').reduce((s,p)=>s+p.amount,0);
+  document.getElementById('sum-total').textContent=fmtCurrency(biz+per);
+  document.getElementById('sum-business').textContent=fmtCurrency(biz);
+  document.getElementById('sum-personal').textContent=fmtCurrency(per);
+
+  let visible=mp;
+  if(filter==='business') visible=mp.filter(p=>p.type==='business');
+  if(filter==='personal') visible=mp.filter(p=>p.type==='personal');
+  if(filter==='soon') visible=mp.filter(p=>{const d=getDaysUntil(p.displayDate);return d!==null&&d>=0&&d<=7;});
+
+  const c=document.getElementById('list-container');
+  if(!visible.length){
+    c.innerHTML=`<div class="empty"><div class="empty-icon">💸</div><h3>${filter==='soon'?'Nothing due soon':'No payments this month'}</h3><p>${filter==='soon'?'No payments due in the next 7 days.':'Tap + to add a payment.'}</p></div>`;
+    return;
+  }
+  c.innerHTML='';
+  visible.forEach(p=>c.appendChild(makeCard(p)));
+}
+
+function makeCard(p) {
+  const days=getDaysUntil(p.displayDate);
+  const isSoon=days!==null&&days>=0&&days<=7;
+  const card=document.createElement('div');
+  card.className=`payment-card ${p.type}${isSoon?' due-soon':''}`;
+  const soonTag=isSoon?`<span class="tag tag-soon">Due ${days===0?'today':'in '+days+' day'+(days===1?'':'s')}</span>`:'';
+  const typeTag=`<span class="tag tag-${p.type}">${p.type==='business'?'Business':'Personal'}</span>`;
+  card.innerHTML=`
+    <div class="payment-inner">
+      <div class="payment-left">
+        <div class="payment-name">${p.name}</div>
+        <div class="payment-meta"><span class="payment-date">${fmtDate(p.displayDate)}</span>${typeTag}${soonTag}</div>
+      </div>
+      <div cla
