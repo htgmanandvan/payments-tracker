@@ -286,9 +286,12 @@ function loadPayments() {
   const masterIds = MASTER_PAYMENTS.map(p => p.id);
   const localEdits = local.filter(p => masterIds.includes(p.id));
   const localAdditions = local.filter(p => !masterIds.includes(p.id));
+  // Local edits: any master ID that appears in local storage overrides master
+  const localById = {};
+  local.forEach(p => { localById[p.id] = p; });
   allPayments = MASTER_PAYMENTS
     .filter(p => !deleted.includes(p.id))
-    .map(p => localEdits.find(e => e.id === p.id) || p)
+    .map(p => localById[p.id] || p)
     .concat(localAdditions.filter(p => !deleted.includes(p.id)));
   document.getElementById('sheet-banner').style.display = 'none';
   document.getElementById('last-sync').textContent = `${allPayments.length} payments`;
@@ -415,10 +418,17 @@ function savePayment() {
   if(!name||isNaN(amount)){alert('Please enter a name and amount.');return;}
   const payment={id:editId||Date.now(),name,amount,type:document.getElementById('f-type').value,date:document.getElementById('f-date').value,freq:document.getElementById('f-freq').value,category:document.getElementById('f-category').value};
   let data=loadLocal();
-  if(editId) data=data.map(p=>p.id===editId?payment:p);
-  else data.push(payment);
+  if(editId) {
+    // Remove old version and add updated one
+    data=data.filter(p=>p.id!==editId);
+    data.push(payment);
+  } else {
+    data.push(payment);
+  }
   saveLocal(data);
-  allPayments=data;
+  // Update live list directly so edit persists without reload
+  if(editId) allPayments=allPayments.map(p=>p.id===editId?payment:p);
+  else allPayments.push(payment);
   closeModal();
   showToast(editId?'Payment updated':'Payment added');
   render();
