@@ -90,20 +90,7 @@
   .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; color: var(--text-muted); gap: 12px; font-size: 14px; }
   .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
 
-  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; align-items: flex-end; }
-  .modal-bg.open { display: flex; }
-  .modal { background: var(--bg); border-radius: var(--radius) var(--radius) 0 0; padding: 20px 16px 32px; width: 100%; border-top: 0.5px solid var(--border); max-height: 90vh; overflow-y: auto; }
-  .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
-  .form-group { margin-bottom: 14px; }
-  .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
-  .form-group input, .form-group select { width: 100%; font-size: 15px; padding: 10px 12px; border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
-  .btn-primary { flex: 1; padding: 12px; background: var(--blue); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; }
-  .btn-secondary { padding: 12px 18px; background: none; border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); font-size: 15px; cursor: pointer; color: var(--text-muted); }
 
-  .fab { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; background: var(--blue); border-radius: 50%; border: none; color: #fff; font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(24,95,165,0.35); z-index: 40; }
-  .fab:active { opacity: 0.85; }
 
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 100; white-space: nowrap; }
   .toast.show { opacity: 1; }
@@ -166,65 +153,8 @@
   </div>
 </div>
 
-<button class="fab" onclick="openAdd()" title="Add payment">+</button>
 
-<div class="modal-bg" id="modal-bg">
-  <div class="modal">
-    <h2 id="modal-title">Add payment</h2>
-    <div class="form-group">
-      <label>Payment name</label>
-      <input type="text" id="f-name" placeholder="e.g. Van insurance">
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Amount (£)</label>
-        <input type="number" id="f-amount" placeholder="0.00" step="0.01" min="0">
-      </div>
-      <div class="form-group">
-        <label>Type</label>
-        <select id="f-type">
-          <option value="business">Business</option>
-          <option value="personal">Personal</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Due date</label>
-        <input type="date" id="f-date">
-      </div>
-      <div class="form-group">
-        <label>Frequency</label>
-        <select id="f-freq">
-          <option value="monthly">Monthly</option>
-          <option value="annual">Annual</option>
-          <option value="quarterly">Quarterly</option>
-          <option value="weekly">Weekly</option>
-          <option value="one-off">One-off</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Category</label>
-      <select id="f-category">
-        <option value="Insurance">Insurance</option>
-        <option value="Vehicle">Vehicle</option>
-        <option value="Subscriptions">Subscriptions</option>
-        <option value="Utilities">Utilities</option>
-        <option value="Rent / Mortgage">Rent / Mortgage</option>
-        <option value="Tax / HMRC">Tax / HMRC</option>
-        <option value="Equipment">Equipment</option>
-        <option value="Fuel">Fuel</option>
-        <option value="Other">Other</option>
-      </select>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" id="btn-delete" style="display:none;color:var(--red)" onclick="deletePayment()">Delete</button>
-      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-      <button class="btn-primary" onclick="savePayment()">Save</button>
-    </div>
-  </div>
-</div>
+
 
 <div class="toast" id="toast"></div>
 
@@ -270,10 +200,6 @@ const MASTER_PAYMENTS = [
   { id:29, name:'Audible',                     amount:5.99,    type:'personal', date:'2026-07-25', freq:'monthly', category:'Subscriptions'   },
 ];
 
-function loadLocal() { return JSON.parse(localStorage.getItem('htg_payments_v2') || '[]'); }
-function saveLocal(d) { localStorage.setItem('htg_payments_v2', JSON.stringify(d)); }
-function loadDeleted() { return JSON.parse(localStorage.getItem('htg_payments_deleted') || '[]'); }
-function saveDeleted(d) { localStorage.setItem('htg_payments_deleted', JSON.stringify(d)); }
 
 function loadPayments() {
   const btn = document.getElementById('sync-btn');
@@ -371,73 +297,15 @@ function makeCard(p) {
       <div class="detail-row"><span class="detail-label">Category</span><span class="detail-val">${p.category||'—'}</span></div>
       <div class="detail-row"><span class="detail-label">Frequency</span><span class="detail-val">${p.freq}</span></div>
       <div class="detail-row"><span class="detail-label">Monthly equiv.</span><span class="detail-val">${fmtCurrency(getMonthlyAmount(p))}/mo</span></div>
-      <div class="action-row"><button class="action-btn" onclick="openEdit(${p.id});event.stopPropagation()">✏️ Edit</button></div>
     </div>`;
   card.querySelector('.payment-inner').addEventListener('click',()=>document.getElementById(`det-${p.id}`).classList.toggle('open'));
   return card;
 }
 
-function openAdd() {
-  editId=null;
-  document.getElementById('modal-title').textContent='Add payment';
-  document.getElementById('btn-delete').style.display='none';
-  document.getElementById('f-name').value='';
-  document.getElementById('f-amount').value='';
-  document.getElementById('f-type').value='business';
-  document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('f-freq').value='monthly';
-  document.getElementById('f-category').value='Other';
-  document.getElementById('modal-bg').classList.add('open');
-}
 
-function openEdit(id) {
-  editId=id;
-  const p=allPayments.find(x=>x.id===id);
-  if(!p)return;
-  document.getElementById('modal-title').textContent='Edit payment';
-  document.getElementById('btn-delete').style.display='block';
-  document.getElementById('f-name').value=p.name;
-  document.getElementById('f-amount').value=p.amount;
-  document.getElementById('f-type').value=p.type;
-  document.getElementById('f-date').value=p.date;
-  document.getElementById('f-freq').value=p.freq||'monthly';
-  document.getElementById('f-category').value=p.category||'Other';
-  document.getElementById('modal-bg').classList.add('open');
-}
 
-function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
 
-function savePayment() {
-  const name=document.getElementById('f-name').value.trim();
-  const amount=parseFloat(document.getElementById('f-amount').value);
-  if(!name||isNaN(amount)){alert('Please enter a name and amount.');return;}
-  const payment={id:editId||Date.now(),name,amount,type:document.getElementById('f-type').value,date:document.getElementById('f-date').value,freq:document.getElementById('f-freq').value,category:document.getElementById('f-category').value};
-  let data = loadLocal();
-  if(editId) {
-    data = data.filter(p=>p.id!==editId);
-    data.push(payment);
-    allPayments = allPayments.map(p=>p.id===editId?payment:p);
-  } else {
-    payment.id = Date.now();
-    data.push(payment);
-    allPayments.push(payment);
-  }
-  saveLocal(data);
-  closeModal();
-  showToast(editId?'Payment updated':'Payment added');
-  render();
-}
 
-function deletePayment() {
-  if(!confirm('Delete this payment?'))return;
-  const deleted = loadDeleted();
-  if(!deleted.includes(editId)){ deleted.push(editId); saveDeleted(deleted); }
-  saveLocal(loadLocal().filter(p=>p.id!==editId));
-  allPayments = allPayments.filter(p=>p.id!==editId);
-  closeModal();
-  showToast('Payment deleted');
-  render();
-}
 
 loadPayments();
 </script>
