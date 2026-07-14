@@ -204,19 +204,10 @@ const MASTER_PAYMENTS = [
 function loadPayments() {
   const btn = document.getElementById('sync-btn');
   btn.classList.add('syncing');
-  const local = loadLocal();
-  const deleted = loadDeleted();
-  const masterIds = MASTER_PAYMENTS.map(p => p.id);
-  const localById = {};
-  local.forEach(p => { localById[p.id] = p; });
-  const localAdditions = local.filter(p => !masterIds.includes(p.id));
-  allPayments = MASTER_PAYMENTS
-    .filter(p => !deleted.includes(p.id))
-    .map(p => localById[p.id] || p)
-    .concat(localAdditions.filter(p => !deleted.includes(p.id)));
+  allPayments = MASTER_PAYMENTS;
   document.getElementById('sheet-banner').style.display = 'none';
-  document.getElementById('last-sync').textContent = `${allPayments.length} payments`;
-  showToast(`${allPayments.length} payments loaded`);
+  document.getElementById('last-sync').textContent = allPayments.length + ' payments';
+  showToast(allPayments.length + ' payments loaded');
   btn.classList.remove('syncing');
   render();
 }
