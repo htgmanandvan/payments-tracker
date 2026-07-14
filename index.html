@@ -275,16 +275,21 @@ const MASTER_PAYMENTS = [
 
 function loadLocal() { return JSON.parse(localStorage.getItem('htg_payments_v2') || '[]'); }
 function saveLocal(d) { localStorage.setItem('htg_payments_v2', JSON.stringify(d)); }
+function loadDeleted() { return JSON.parse(localStorage.getItem('htg_payments_deleted') || '[]'); }
+function saveDeleted(d) { localStorage.setItem('htg_payments_deleted', JSON.stringify(d)); }
 
 function loadPayments() {
   const btn = document.getElementById('sync-btn');
   btn.classList.add('syncing');
-  // Merge master list with any local edits/additions
   const local = loadLocal();
+  const deleted = loadDeleted();
   const masterIds = MASTER_PAYMENTS.map(p => p.id);
   const localEdits = local.filter(p => masterIds.includes(p.id));
   const localAdditions = local.filter(p => !masterIds.includes(p.id));
-  allPayments = MASTER_PAYMENTS.map(p => localEdits.find(e => e.id === p.id) || p).concat(localAdditions);
+  allPayments = MASTER_PAYMENTS
+    .filter(p => !deleted.includes(p.id))
+    .map(p => localEdits.find(e => e.id === p.id) || p)
+    .concat(localAdditions.filter(p => !deleted.includes(p.id)));
   document.getElementById('sheet-banner').style.display = 'none';
   document.getElementById('last-sync').textContent = `${allPayments.length} payments`;
   showToast(`${allPayments.length} payments loaded`);
@@ -421,9 +426,10 @@ function savePayment() {
 
 function deletePayment() {
   if(!confirm('Delete this payment?'))return;
-  let data=loadLocal().filter(p=>p.id!==editId);
-  saveLocal(data);
-  allPayments=data;
+  const deleted = loadDeleted();
+  if(!deleted.includes(editId)){ deleted.push(editId); saveDeleted(deleted); }
+  saveLocal(loadLocal().filter(p=>p.id!==editId));
+  allPayments = allPayments.filter(p=>p.id!==editId);
   closeModal();
   showToast('Payment deleted');
   render();
