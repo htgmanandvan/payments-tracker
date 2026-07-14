@@ -237,16 +237,33 @@ let viewMonth = new Date().getMonth();
 let viewYear = new Date().getFullYear();
 let editId = null;
 
+function fixDate(d) {
+  if (!d) return '';
+  // Already in yyyy-MM-dd format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  // Parse full date string like "Wed Jul 01 2026 00:00:00 GMT+0100"
+  try {
+    const parsed = new Date(d);
+    if (!isNaN(parsed)) {
+      return parsed.getFullYear() + '-' +
+        String(parsed.getMonth()+1).padStart(2,'0') + '-' +
+        String(parsed.getDate()).padStart(2,'0');
+    }
+  } catch(e) {}
+  return d;
+}
+
 async function loadPayments() {
   const btn = document.getElementById('sync-btn');
   btn.classList.add('syncing');
   document.getElementById('last-sync').textContent = 'Syncing...';
   document.getElementById('list-container').innerHTML = '<div class="loading"><div class="spinner"></div>Loading payments...</div>';
   try {
-    const resp = await fetch(SCRIPT_URL);
-    const data = await resp.json();
+    const resp = await fetch(SCRIPT_URL, {redirect: 'follow'});
+    const text = await resp.text();
+    const data = JSON.parse(text);
     if (data.status === 'ok') {
-      allPayments = data.payments;
+      allPayments = data.payments.map(p => ({...p, date: fixDate(p.date)}));
       document.getElementById('last-sync').textContent = `${allPayments.length} payments · ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
       document.getElementById('sheet-banner').style.display = 'none';
       showToast(`${allPayments.length} payments loaded`);
@@ -266,6 +283,7 @@ async function postToScript(action, payment) {
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
       body: JSON.stringify({ action, payment })
     });
   } catch(e) {
