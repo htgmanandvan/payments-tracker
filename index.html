@@ -313,4 +313,123 @@ function navMonth(dir) {
 
 function getPaymentsForMonth(month,year) {
   return allPayments.filter(p=>{
-    if(
+    if(!p.date)return false;
+    const d=new Date(p.date);
+    if(p.freq==='one-off') return d.getMonth()===month&&d.getFullYear()===year;
+    if(p.freq==='annual') return d.getMonth()===month;
+    if(p.freq==='quarterly') return (month-d.getMonth())%3===0&&month>=d.getMonth();
+    return true;
+  }).map(p=>{
+    const orig=new Date(p.date);
+    const displayDate=`${year}-${String(month+1).padStart(2,'0')}-${String(orig.getDate()).padStart(2,'0')}`;
+    return{...p,displayDate};
+  }).sort((a,b)=>a.displayDate.localeCompare(b.displayDate));
+}
+
+function render() {
+  document.getElementById('nav-label').textContent=`${MONTHS[viewMonth]} ${viewYear}`;
+  const mp=getPaymentsForMonth(viewMonth,viewYear);
+  const biz=mp.filter(p=>p.type==='business').reduce((s,p)=>s+p.amount,0);
+  const per=mp.filter(p=>p.type==='personal').reduce((s,p)=>s+p.amount,0);
+  document.getElementById('sum-total').textContent=fmtCurrency(biz+per);
+  document.getElementById('sum-business').textContent=fmtCurrency(biz);
+  document.getElementById('sum-personal').textContent=fmtCurrency(per);
+
+  let visible=mp;
+  if(filter==='business') visible=mp.filter(p=>p.type==='business');
+  if(filter==='personal') visible=mp.filter(p=>p.type==='personal');
+  if(filter==='soon') visible=mp.filter(p=>{const d=getDaysUntil(p.displayDate);return d!==null&&d>=0&&d<=7;});
+
+  const c=document.getElementById('list-container');
+  if(!visible.length){
+    c.innerHTML=`<div class="empty"><div class="empty-icon">💸</div><h3>${filter==='soon'?'Nothing due soon':'No payments this month'}</h3><p>${filter==='soon'?'No payments due in the next 7 days.':'Tap + to add a payment.'}</p></div>`;
+    return;
+  }
+  c.innerHTML='';
+  visible.forEach(p=>c.appendChild(makeCard(p)));
+}
+
+function makeCard(p) {
+  const days=getDaysUntil(p.displayDate);
+  const isSoon=days!==null&&days>=0&&days<=7;
+  const card=document.createElement('div');
+  card.className=`payment-card ${p.type}${isSoon?' due-soon':''}`;
+  const soonTag=isSoon?`<span class="tag tag-soon">Due ${days===0?'today':'in '+days+' day'+(days===1?'':'s')}</span>`:'';
+  const typeTag=`<span class="tag tag-${p.type}">${p.type==='business'?'Business':'Personal'}</span>`;
+  card.innerHTML=`
+    <div class="payment-inner">
+      <div class="payment-left">
+        <div class="payment-name">${p.name}</div>
+        <div class="payment-meta"><span class="payment-date">${fmtDate(p.displayDate)}</span>${typeTag}${soonTag}</div>
+      </div>
+      <div class="payment-amount">${fmtCurrency(p.amount)}</div>
+    </div>
+    <div class="payment-detail" id="det-${p.id}">
+      <div class="detail-row"><span class="detail-label">Category</span><span class="detail-val">${p.category||'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Frequency</span><span class="detail-val">${p.freq}</span></div>
+      <div class="detail-row"><span class="detail-label">Monthly equiv.</span><span class="detail-val">${fmtCurrency(getMonthlyAmount(p))}/mo</span></div>
+      <div class="action-row"><button class="action-btn" onclick="openEdit(${p.id});event.stopPropagation()">✏️ Edit</button></div>
+    </div>`;
+  card.querySelector('.payment-inner').addEventListener('click',()=>document.getElementById(`det-${p.id}`).classList.toggle('open'));
+  return card;
+}
+
+function openAdd() {
+  editId=null;
+  document.getElementById('modal-title').textContent='Add payment';
+  document.getElementById('btn-delete').style.display='none';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-amount').value='';
+  document.getElementById('f-type').value='business';
+  document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f-freq').value='monthly';
+  document.getElementById('f-category').value='Other';
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function openEdit(id) {
+  editId=id;
+  const p=allPayments.find(x=>x.id===id);
+  if(!p)return;
+  document.getElementById('modal-title').textContent='Edit payment';
+  document.getElementById('btn-delete').style.display='block';
+  document.getElementById('f-name').value=p.name;
+  document.getElementById('f-amount').value=p.amount;
+  document.getElementById('f-type').value=p.type;
+  document.getElementById('f-date').value=p.date;
+  document.getElementById('f-freq').value=p.freq||'monthly';
+  document.getElementById('f-category').value=p.category||'Other';
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
+
+function savePayment() {
+  const name=document.getElementById('f-name').value.trim();
+  const amount=parseFloat(document.getElementById('f-amount').value);
+  if(!name||isNaN(amount)){alert('Please enter a name and amount.');return;}
+  const payment={id:editId||Date.now(),name,amount,type:document.getElementById('f-type').value,date:document.getElementById('f-date').value,freq:document.getElementById('f-freq').value,category:document.getElementById('f-category').value};
+  let data=loadLocal();
+  if(editId) data=data.map(p=>p.id===editId?payment:p);
+  else data.push(payment);
+  saveLocal(data);
+  allPayments=data;
+  closeModal();
+  showToast(editId?'Payment updated':'Payment added');
+  render();
+}
+
+function deletePayment() {
+  if(!confirm('Delete this payment?'))return;
+  let data=loadLocal().filter(p=>p.id!==editId);
+  saveLocal(data);
+  allPayments=data;
+  closeModal();
+  showToast('Payment deleted');
+  render();
+}
+
+loadPayments();
+</script>
+</body>
+</html>
