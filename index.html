@@ -229,7 +229,6 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyGwDevn4R1cyfEAorrHiRXrwdegLfBPKNzvyBPpWo94norzEAXEG-_sWkY_TLvXtdmOg/exec';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 let allPayments = [];
 let filter = 'all';
@@ -237,58 +236,64 @@ let viewMonth = new Date().getMonth();
 let viewYear = new Date().getFullYear();
 let editId = null;
 
-function fixDate(d) {
-  if (!d) return '';
-  // Already in yyyy-MM-dd format
-  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-  // Parse full date string like "Wed Jul 01 2026 00:00:00 GMT+0100"
-  try {
-    const parsed = new Date(d);
-    if (!isNaN(parsed)) {
-      return parsed.getFullYear() + '-' +
-        String(parsed.getMonth()+1).padStart(2,'0') + '-' +
-        String(parsed.getDate()).padStart(2,'0');
-    }
-  } catch(e) {}
-  return d;
-}
+const MASTER_PAYMENTS = [
+  // BUSINESS
+  { id:1,  name:'Fuel Card (Cap on Tap)',      amount:250.00,  type:'business', date:'2026-07-01', freq:'monthly', category:'Vehicle'         },
+  { id:2,  name:'Xero',                        amount:38.00,   type:'business', date:'2026-07-01', freq:'monthly', category:'Subscriptions'   },
+  { id:3,  name:'Close Bros (1)',              amount:58.97,   type:'business', date:'2026-07-01', freq:'monthly', category:'Insurance'       },
+  { id:4,  name:'Close Bros (2)',              amount:116.77,  type:'business', date:'2026-07-01', freq:'monthly', category:'Insurance'       },
+  { id:5,  name:'YSS Storage',                 amount:360.00,  type:'business', date:'2026-07-01', freq:'monthly', category:'Other'           },
+  { id:6,  name:'O2 (Business)',               amount:60.60,   type:'business', date:'2026-07-03', freq:'monthly', category:'Subscriptions'   },
+  { id:7,  name:'Enterprise Loan (HTG)',       amount:232.00,  type:'business', date:'2026-07-13', freq:'monthly', category:'Vehicle'         },
+  { id:8,  name:'OpenAI',                      amount:7.00,    type:'business', date:'2026-07-20', freq:'monthly', category:'Subscriptions'   },
+  { id:9,  name:"Mason's Accountants",         amount:114.50,  type:'business', date:'2026-07-25', freq:'monthly', category:'Other'           },
+  { id:10, name:'Checkatrade',                 amount:345.60,  type:'business', date:'2026-07-28', freq:'monthly', category:'Subscriptions'   },
+  // PERSONAL — House Bills
+  { id:11, name:'Water',                       amount:75.00,   type:'personal', date:'2026-07-08', freq:'monthly', category:'Utilities'       },
+  { id:12, name:'Electric / Gas',              amount:300.00,  type:'personal', date:'2026-07-15', freq:'monthly', category:'Utilities'       },
+  { id:13, name:'Rent',                        amount:1100.00, type:'personal', date:'2026-07-26', freq:'monthly', category:'Rent / Mortgage' },
+  { id:14, name:'Council Tax',                 amount:183.11,  type:'personal', date:'2026-07-28', freq:'monthly', category:'Utilities'       },
+  { id:15, name:'Broadband',                   amount:24.00,   type:'personal', date:'2026-07-28', freq:'monthly', category:'Subscriptions'   },
+  // PERSONAL — Other Bills
+  { id:16, name:'Iohla Gym',                   amount:40.00,   type:'personal', date:'2026-07-01', freq:'monthly', category:'Other'           },
+  { id:17, name:'Kia Road Tax',                amount:3.06,    type:'personal', date:'2026-07-01', freq:'monthly', category:'Vehicle'         },
+  { id:18, name:'Midnite BJJ',                 amount:38.00,   type:'personal', date:'2026-07-01', freq:'monthly', category:'Other'           },
+  { id:19, name:'Living Projects',             amount:5.00,    type:'personal', date:'2026-07-01', freq:'monthly', category:'Subscriptions'   },
+  { id:20, name:'Netflix',                     amount:12.99,   type:'personal', date:'2026-07-05', freq:'monthly', category:'Subscriptions'   },
+  { id:21, name:'Google One (1)',              amount:2.49,    type:'personal', date:'2026-07-07', freq:'monthly', category:'Subscriptions'   },
+  { id:22, name:'Iohla Mobile',                amount:4.50,    type:'personal', date:'2026-07-08', freq:'monthly', category:'Subscriptions'   },
+  { id:23, name:'Amazon Prime',                amount:8.99,    type:'personal', date:'2026-07-10', freq:'monthly', category:'Subscriptions'   },
+  { id:24, name:'Google One (2)',              amount:3.18,    type:'personal', date:'2026-07-11', freq:'monthly', category:'Subscriptions'   },
+  { id:25, name:'Enterprise Loan (Personal)', amount:232.16,  type:'personal', date:'2026-07-13', freq:'monthly', category:'Rent / Mortgage' },
+  { id:26, name:'NatWest CC Repayment',        amount:40.00,   type:'personal', date:'2026-07-14', freq:'monthly', category:'Other'           },
+  { id:27, name:'Google Play (Audible)',       amount:9.99,    type:'personal', date:'2026-07-17', freq:'monthly', category:'Subscriptions'   },
+  { id:28, name:'YouTube Premium',             amount:6.66,    type:'personal', date:'2026-07-20', freq:'monthly', category:'Subscriptions'   },
+  { id:29, name:'Audible',                     amount:5.99,    type:'personal', date:'2026-07-25', freq:'monthly', category:'Subscriptions'   },
+];
 
-async function loadPayments() {
+function loadLocal() { return JSON.parse(localStorage.getItem('htg_payments_v2') || '[]'); }
+function saveLocal(d) { localStorage.setItem('htg_payments_v2', JSON.stringify(d)); }
+function loadDeleted() { return JSON.parse(localStorage.getItem('htg_payments_deleted') || '[]'); }
+function saveDeleted(d) { localStorage.setItem('htg_payments_deleted', JSON.stringify(d)); }
+
+function loadPayments() {
   const btn = document.getElementById('sync-btn');
   btn.classList.add('syncing');
-  document.getElementById('last-sync').textContent = 'Syncing...';
-  document.getElementById('list-container').innerHTML = '<div class="loading"><div class="spinner"></div>Loading payments...</div>';
-  try {
-    const resp = await fetch(SCRIPT_URL, {redirect: 'follow'});
-    const text = await resp.text();
-    const data = JSON.parse(text);
-    if (data.status === 'ok') {
-      allPayments = data.payments.map(p => ({...p, date: fixDate(p.date)}));
-      document.getElementById('last-sync').textContent = `${allPayments.length} payments · ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
-      document.getElementById('sheet-banner').style.display = 'none';
-      showToast(`${allPayments.length} payments loaded`);
-    } else {
-      throw new Error('Script error');
-    }
-  } catch(e) {
-    document.getElementById('last-sync').textContent = 'Sync failed — tap to retry';
-    document.getElementById('list-container').innerHTML = '<div class="empty"><div class="empty-icon">📡</div><h3>Couldn't load payments</h3><p>Check your connection and tap Sync to retry.</p></div>';
-  } finally {
-    btn.classList.remove('syncing');
-    render();
-  }
-}
-
-async function postToScript(action, payment) {
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      body: JSON.stringify({ action, payment })
-    });
-  } catch(e) {
-    console.error('Post failed:', e);
-  }
+  const local = loadLocal();
+  const deleted = loadDeleted();
+  const masterIds = MASTER_PAYMENTS.map(p => p.id);
+  const localById = {};
+  local.forEach(p => { localById[p.id] = p; });
+  const localAdditions = local.filter(p => !masterIds.includes(p.id));
+  allPayments = MASTER_PAYMENTS
+    .filter(p => !deleted.includes(p.id))
+    .map(p => localById[p.id] || p)
+    .concat(localAdditions.filter(p => !deleted.includes(p.id)));
+  document.getElementById('sheet-banner').style.display = 'none';
+  document.getElementById('last-sync').textContent = `${allPayments.length} payments`;
+  showToast(`${allPayments.length} payments loaded`);
+  btn.classList.remove('syncing');
+  render();
 }
 
 function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
@@ -403,31 +408,35 @@ function openEdit(id) {
 
 function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
 
-async function savePayment() {
+function savePayment() {
   const name=document.getElementById('f-name').value.trim();
   const amount=parseFloat(document.getElementById('f-amount').value);
   if(!name||isNaN(amount)){alert('Please enter a name and amount.');return;}
   const payment={id:editId||Date.now(),name,amount,type:document.getElementById('f-type').value,date:document.getElementById('f-date').value,freq:document.getElementById('f-freq').value,category:document.getElementById('f-category').value};
+  let data = loadLocal();
   if(editId) {
-    await postToScript('edit', payment);
+    data = data.filter(p=>p.id!==editId);
+    data.push(payment);
     allPayments = allPayments.map(p=>p.id===editId?payment:p);
   } else {
-    await postToScript('add', payment);
     payment.id = Date.now();
+    data.push(payment);
     allPayments.push(payment);
   }
+  saveLocal(data);
   closeModal();
-  showToast(editId?'Payment updated — synced':'Payment added — synced');
+  showToast(editId?'Payment updated':'Payment added');
   render();
 }
 
-async function deletePayment() {
+function deletePayment() {
   if(!confirm('Delete this payment?'))return;
-  const payment = allPayments.find(p=>p.id===editId);
-  await postToScript('delete', payment);
+  const deleted = loadDeleted();
+  if(!deleted.includes(editId)){ deleted.push(editId); saveDeleted(deleted); }
+  saveLocal(loadLocal().filter(p=>p.id!==editId));
   allPayments = allPayments.filter(p=>p.id!==editId);
   closeModal();
-  showToast('Payment deleted — synced');
+  showToast('Payment deleted');
   render();
 }
 
